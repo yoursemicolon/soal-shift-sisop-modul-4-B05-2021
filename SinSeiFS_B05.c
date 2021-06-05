@@ -15,6 +15,13 @@
 static const char *dirpath = "/home/yoursemicolon/Downloads";
 static const char *logpath = "/home/yoursemicolon/SinSeiFS.log";
 
+void writeLog(char * args){
+	FILE* log;
+	log = fopen(logpath,"a+");
+	fprintf(log,"%s\n",args);
+	fclose(log);
+}
+
 void writeInfo(char *text, char *path)
 {
     char *info = "INFO";
@@ -67,6 +74,16 @@ void substring(char *s, char *sub, int p, int l)
     sub[c] = '\0';
 }
 
+void encodeString(char *arg, int stop)
+{
+    if (strcmp(arg, ".") == 0 || strcmp(arg, "..") == 0)
+        return;
+    for (int i = 0; i < stop; i++)
+    {
+        arg[i] = atbashChiper(arg[i]);
+    }
+}
+
 void decodeString(char *arg, int stop)
 {
     if (strcmp(arg, ".") == 0 || strcmp(arg, "..") == 0)
@@ -75,6 +92,25 @@ void decodeString(char *arg, int stop)
     {
         arg[i] = atbashChiper(arg[i]);
     }
+}
+
+void encode(char *arg)
+{
+    if (strcmp(arg, ".") == 0 || strcmp(arg, "..") == 0)
+        return;
+
+    int stop = strlen(arg);
+    for (int i = stop; i >= 0; i--)
+    {
+        if (arg[i] == '/')
+            break;
+        if (arg[i] == '.')
+        {
+            stop = i;
+            break;
+        }
+    }
+    encodeString(arg, stop);
 }
 
 void decode(char *arg)
@@ -86,7 +122,7 @@ void decode(char *arg)
     if (slash != NULL)
     {
         int stop = strlen(slash);
-        for (int i = stop - 1; i >= 0; i--)
+        for (int i = stop; i >= 0; i--)
         {
             if (slash[i] == '/')
                 break;
@@ -326,21 +362,21 @@ char *lastPart(char *str)
 // 	fclose(combined);
 // }
 
-// int encrFolder(char *str)
-// {
-// 	int ans;
-// 	char *fi = strtok(str, "/");
-// 	ans = 0;
-// 	while(fi)
-// 	{
-// 		char sub[1024];
-// 		substring(fi, sub, 0, 6);
-// 		if(!strcmp(sub, "encv1_")) ans |= 1;
-// 		else if(!strcmp(sub, "encv2_")) ans |= 2;
-// 		fi = strtok(NULL, "/");
-// 	}
-// 	return ans;
-// }
+int encrFolder(char *str)
+{
+	int ans;
+	char *fi = strtok(str, "/");
+	ans = 0;
+	while(fi)
+	{
+		char sub[1024];
+		substring(fi, sub, 0, 6);
+		if(!strcmp(sub, "encv1_")) ans |= 1;
+		else if(!strcmp(sub, "encv2_")) ans |= 2;
+		fi = strtok(NULL, "/");
+	}
+	return ans;
+}
 
 // int encrFull(char *str)
 // {
@@ -471,24 +507,31 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_
         memset(&st, 0, sizeof(st));
         st.st_ino = de->d_ino;
         st.st_mode = de->d_type << 12;
-        char nama[1000000];
-        strcpy(nama, de->d_name);
-        if (flag == 1)
-        {
-            if (de->d_type == DT_REG)
-                decrypt(nama, 1);
-            else if (de->d_type == DT_DIR && strcmp(de->d_name, ".") != 0 && strcmp(de->d_name, "..") != 0)
-                decrypt(nama, 0);
-            res = (filler(buf, nama, &st, 0));
-            if (res != 0)
-                break;
-        }
-        else
-        {
-            res = (filler(buf, nama, &st, 0));
-            if (res != 0)
-                break;
-        }
+        // char nama[1000000];
+        // strcpy(nama, de->d_name);
+        // if (flag == 1)
+        // {
+        //     if (de->d_type == DT_REG)
+        //         decrypt(nama, 1);
+        //     else if (de->d_type == DT_DIR && strcmp(de->d_name, ".") != 0 && strcmp(de->d_name, "..") != 0)
+        //         decrypt(nama, 0);
+        //     res = (filler(buf, nama, &st, 0));
+        //     if (res != 0)
+        //         break;
+        // }
+        // else
+        // {
+        //     res = (filler(buf, nama, &st, 0));
+        //     if (res != 0)
+        //         break;
+        // }
+        if (a != NULL)
+            encode(de->name);
+
+        res = (filler(buf, de->d_name, &st, 0));
+
+        if (res)
+            break;
     }
     closedir(dp);
     writeInfo("CD", fpath);
@@ -521,32 +564,32 @@ static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
     return 0;
 }
 
-// static int xmp_mkdir(const char *path, mode_t mode)
-// {
-// 	char fpath[1000];
-// 	mixPath(fpath, dirpath, path);
+static int xmp_mkdir(const char *path, mode_t mode)
+{
+	char fpath[1000];
+	getPath(fpath, dirpath, path);
+    
+    char log[3000];
+        char *tmp = strstr(from, "AtoZ_");
+        sprintf(logbuf,"%s %s %s", f, "->", t);
+        writeLog(log);
 
-// 	int res;
+	int res;
+	res = mkdir(checkPath(fpath), mode);
+	if (res == -1) return -errno;
 
-// 	res = mkdir(cekPath(fpath), mode);
-// 	if (res == -1) return -errno;
-
-//     char cek_substr[1024];
-//     if(lastPart(fpath) == 0) return 0;
-//     char filePath[1000000];
-//     strcpy(filePath, lastPart(fpath));
-//     substring(filePath, cek_substr, 0, 6);
-// 	if(strcmp(cek_substr, "encv1_") == 0) //folder encrypt1
-// 	{
-// 		encrypt1(fpath, 1);
-// 	}
-// 	else if(strcmp(cek_substr, "encv2_") == 0) //folder encrypt2
-// 	{
-// 		encrypt2(fpath, 1);
-// 	}
-// 	writeI("MKDIR", fpath);
-// 	return 0;
-// }
+    char cek_substr[1024];
+    if(lastPart(fpath) == 0) return 0;
+    char filePath[1000000];
+    strcpy(filePath, lastPart(fpath));
+    substring(filePath, cek_substr, 0, 6);
+	if(strcmp(cek_substr, "AtoZ_") == 0)
+	{
+		encrypt1(fpath, 1);
+	}
+	writeI("MKDIR", fpath);
+	return 0;
+}
 
 static int xmp_unlink(const char *path)
 {
@@ -603,7 +646,12 @@ static int xmp_rename(const char *from, const char *to)
 
     char *a = strstr(to, "AtoZ_");
     if (a != NULL)
-        decode(a);
+    {
+        char log[3000];
+        char *tmp = strstr(from, "AtoZ_");
+        sprintf(logbuf,"%s %s %s", f, "->", t);
+        writeLog(log);
+    }
 
     int res;
     res = rename(checkPath(f_from), checkPath(f_to));
