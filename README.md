@@ -21,8 +21,105 @@ Kita diminta untuk membuat filesystem dengan ketentuan sebagai berikut.
 - Setiap pembuatan direktori ter-encode (mkdir atau rename) akan tercatat ke sebuah log. Format: ``` /home/[USER]/Downloads/[Nama Direktori] → /home/[USER]/Downloads/AtoZ_[Nama Direktori]```
 - Metode encode pada suatu direktori juga berlaku terhadap direktori yang ada di dalamnya (rekursif).
 
+### Jawab soal 1
+Fungsi yang dipakai untuk encode dan decode menggunakan Atbash cipher (mirror) adalah sebagai berikut. <br>
+**Encode:**
+```C
+void encodeAtbash(char *str)
+{
+    if (strcmp(str, ".") == 0 || strcmp(str, "..") == 0)
+        return;
+
+    printf("Encode path Atbash: %s\n", str);
+
+    int lenght = strlen(str);
+    for (int i = 0; i < lenght; i++)
+    {
+        if (str[i] == '/')
+            continue;
+        if (str[i] == '.')
+            break;
+
+        if (str[i] >= 'A' && str[i] <= 'Z')
+        {
+            str[i] = 'Z' + 'A' - str[i];
+        }
+        else if (st[i] >= 'a' && str[i] <= 'z')
+        {
+            str[i] = 'z' + 'a' - str[i];
+        }
+    }
+}
 ```
+**Decode:**
+```C
+void decodeAtbash(char *str)
+{
+    if (strcmp(str, ".") == 0 || strcmp(str, "..") == 0 || strstr(str, "/") == NULL)
+        return;
+
+    printf("Decode path Atbash: %s\n", str);
+
+    int length = strlen(str), s = 0;
+    for (int i = length-1; i >= 0; i--)
+    {
+        if (str[i] == '/')
+            break;
+
+        if (str[i] == '.') // titik terakhir
+        {
+            length = i;
+            break;
+        }
+    }
+
+    for (int i = 0; i < length; i++)
+    {
+        if (str[i] == '/')
+        {
+            s = i + 1;
+            break;
+        }
+    }
+
+    for (int i = s; i < length; i++)
+    {
+        if (str[i] == '/')
+        {
+            continue;
+        }
+        
+        if (str[i] >= 'A' && str[i] <= 'Z')
+        {
+            str[i] = 'Z' + 'A' - str[i];
+        }
+        else if (st[i] >= 'a' && str[i] <= 'z')
+        {
+            str[i] = 'z' + 'a' - str[i];
+        }
+    }
+}
 ```
+Penjelasan:
+* Pemanggilan fungsi ```decodeAtbash()``` dilakukan pada tiap utility functions seperti ```getattr```, ```rename```, ```mkdir``` dan fungsi-fungi lain. 
+* Pemanggilan fungsi ```encodeAtbash()``` dan ```decodeAtbash()``` dilakukan di utility function ```readdir``` karena FUSE akan melakukan decode di mount folder kemudian encode di FUSE saat  ```readdir```. 
+* Pemanggilan dilakukan dengan pengecekan apakah string ```AtoZ_``` ada dalam path di masing-masing utility function. Pengecekan menggunakan fungsi ```strstr()```. 
+* Fungsi tersebut akan mengabaikan ```/``` dan berhenti ketika bertemu ```.``` yang merupakan ekstensi dari file. <br><br>
+
+Untuk poin d, yaitu pembuatan direktori ter-encode (mkdir atau rename) akan tercatat ke sebuah log dilakukan pada fungsi berikut.
+```C
+// log for mkdir and rename
+void writingLog2(const char *from, char *to)
+{
+    FILE *fp = fopen("/home/yoursemicolon/fs.log", "a");
+
+    fprintf(str, "%s -> %s\n", from, to);
+    fclose(fp);
+}
+```
+Fungsi akan dipanggil ketika membuat ```mkdir``` atau me-renname folder yang berawalan ```AtoZ_```. Jika file log belum ada di direktori, file log baru akan dibuat. 
+
+### Screenshot Hasil Pengerjaan Nomor 1
 
 <a name="soal2"></a>
 ## Soal 2
