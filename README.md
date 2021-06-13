@@ -120,6 +120,18 @@ void writingLog2(const char *from, char *to)
 Fungsi akan dipanggil ketika membuat ```mkdir``` atau me-renname folder yang berawalan ```AtoZ_```. Jika file log belum ada di direktori, file log baru akan dibuat. 
 
 ### Screenshot Hasil Pengerjaan Nomor 1
+Kondisi awal
+<img src="https://github.com/yoursemicolon/soal-shift-sisop-modul-4-B05-2021/blob/main/screenshot/screenshot-1.png"></img><br>
+
+Kondisi setelah encode
+<img src="https://github.com/yoursemicolon/soal-shift-sisop-modul-4-B05-2021/blob/main/screenshot/screenshot-2.png"></img><br>
+
+Kondisi setelah decode
+<img src="https://github.com/yoursemicolon/soal-shift-sisop-modul-4-B05-2021/blob/main/screenshot/screenshot-3.png"></img><br>
+
+Hasil log
+<img src="https://github.com/yoursemicolon/soal-shift-sisop-modul-4-B05-2021/blob/main/screenshot/screenshot-4.png"></img><br>
+
 
 <a name="soal2"></a>
 ## Soal 2
@@ -214,3 +226,11 @@ static int xmp_rmdir(const char *path)
 ```
 
 ### Screenshot Hasil Pengerjaan Soal 4
+Hasil log file SinSeiFS_B05.log
+<img src="https://github.com/yoursemicolon/soal-shift-sisop-modul-4-B05-2021/blob/main/screenshot/screenshot-5.png"></img><br><br>
+
+## Referensi
+1. https://www.tutorialspoint.com/c_standard_library/c_function_localtime.htm
+2. https://www.tutorialspoint.com/c_standard_library/c_function_strftime.htm
+3. http://khyar28.blogspot.com/2015/11/file-system-fuse-implementasi-file.html
+4. https://github.com/infosec-au/learning-c/blob/master/Week4/ROT13.c
