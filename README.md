@@ -21,6 +21,9 @@ Kita diminta untuk membuat filesystem dengan ketentuan sebagai berikut.
 - Setiap pembuatan direktori ter-encode (mkdir atau rename) akan tercatat ke sebuah log. Format: ``` /home/[USER]/Downloads/[Nama Direktori] → /home/[USER]/Downloads/AtoZ_[Nama Direktori]```
 - Metode encode pada suatu direktori juga berlaku terhadap direktori yang ada di dalamnya (rekursif).
 
+```
+```
+
 <a name="soal2"></a>
 ## Soal 2
 - Jika sebuah direktori dibuat dengan awalan “RX_[Nama]”, maka direktori tersebut akan menjadi direktori terencode beserta isinya dengan perubahan nama isi sesuai kasus nomor 1 dengan algoritma tambahan ROT13 (Atbash + ROT13).
@@ -35,6 +38,9 @@ Suatu_File.txt.0002
 ```
 Ketika diakses melalui filesystem hanya akan muncul Suatu_File.t
 
+```
+```
+
 <a name="soal3"></a>
 ## Soal 3
 - Jika sebuah direktori dibuat dengan awalan “A_is_a_”, maka direktori tersebut akan menjadi sebuah direktori spesial.
@@ -43,6 +49,9 @@ Ketika diakses melalui filesystem hanya akan muncul Suatu_File.t
 - Direktori spesial adalah direktori yang mengembalikan enkripsi/encoding pada direktori “AtoZ_” maupun “RX_” namun masing-masing aturan mereka tetap berjalan pada direktori di dalamnya (sifat recursive  “AtoZ_” dan “RX_” tetap berjalan pada subdirektori).
 - Pada direktori spesial semua nama file (tidak termasuk ekstensi) pada fuse akan berubah menjadi lowercase insensitive dan diberi ekstensi baru berupa nilai desimal dari binner perbedaan namanya.
 Contohnya jika pada direktori asli nama filenya adalah “FiLe_CoNtoH.txt” maka pada fuse akan menjadi “file_contoh.txt.1321”. 1321 berasal dari biner 10100101001.
+
+```
+```
 
 <a name="soal4"></a>
 ## Soal 4
@@ -58,4 +67,7 @@ Level : Level logging, dd : 2 digit tanggal, mm : 2 digit bulan, yyyy : 4 digit 
 
 INFO::28052021-10:00:00:CREATE::/test.txt
 INFO::28052021-10:01:00:RENAME::/test.txt::/rename.txt
+```
+
+```
 ```
