@@ -2,294 +2,259 @@
 #include <fuse.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <dirent.h>
 #include <errno.h>
 #include <sys/time.h>
+#include <wait.h>
+#include <dirent.h>
 #include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <stdbool.h>
+#include <errno.h>
+#include <ctype.h>
+#include <time.h>
 
-static const char *dirpath = "/home/yoursemicolon/Downloads";
-static const char *logpath = "/home/yoursemicolon/SinSeiFS.log";
+/* 
+    ** COMPILE
+    gcc -Wall `pkg-config fuse --cflags` SinSeiFS_B05.c -o SinSeiFS_B05 `pkg-config fuse --libs`
 
-void writeLog(char * args){
-	FILE* log;
-	log = fopen(logpath,"a+");
-	fprintf(log,"%s\n",args);
-	fclose(log);
-}
+    ** CREASE FUSE DIRECTORY
+    mkdir fusedir
 
-void writeInfo(char *text, char *path)
+    ** EXECUTE
+    ./SinSeiFS_B05 -f fusedir
+
+    ** UNMOUNT
+    fusermount -u fusedir
+*/
+
+static const *dirpath = "/home/yoursemicolon/Downloads";
+
+char *atoz = "AtoZ_";
+char *key = "SISOP";
+char *rx = "RX_";
+char *a_is_a = "A_is_a";
+
+// create log system
+void writingLog(char *str, int logType)
 {
-    char *info = "INFO";
+    time_t rawtime;
+    time(&rawtime);
+    struct tm *info = = localtime(&rawtime);
+
     char curtime[30];
-    time_t t = time(NULL);
+    strftime(curtime, 30, "%d%m%Y-%H:%M:%S", info);
 
-    struct tm *p1 = localtime(&t);
-    strftime(curtime, 30, "%d%m%Y-%H:%M:%S", pi);
+    FILE *logFile = fopen(logpath, "a");
 
-    char log[1000];
-    sprintf(log, "%s::%s:%s::%s", info, curtime, text, path);
-
-    FILE *out = fopen(logpath, "a");
-    fprintf(out, "%s\n", log);
-    fclose(out);
-
-    return 0;
+    if (logType == 1)
+    {
+        fprintf(logFile, "INFO::%s:%s\n", curtime, str);
+    }
+    else if (logType == 2)
+    {
+        fprintf(logFile, "WARNING::%s:%s\n", curtime, str);
+    }
+    fclose(logFile);
 }
 
-void writeWarning(char *text, char *path)
+// log for mkdir and rename
+void writingLog2(const char *from, char *to)
 {
-    char *info = "WARNING";
-    char curtime[30];
-    time_t t = time(NULL);
+    FILE *fp = fopen("/home/yoursemicolon/fs.log", "a");
 
-    struct tm *p1 = localtime(&t);
-    strftime(curtime, 30, "%d%m%Y-%H:%M:%S", p1);
-
-    char log[1000];
-    sprintf(log, "%s::%s:%s::%s", info, curtime, text, path);
-
-    FILE *out = fopen(logpath, "a");
-    fprintf(out, "%s\n", log);
-    fclose(out);
-
-    return 0;
-}
-
-char ext[100000] = "\0";
-int id = 0;
-
-void substring(char *s, char *sub, int p, int l)
-{
-    int c = 0;
-    while (c < l)
-    {
-        sub[c] = s[p + c];
-        c++;
-    }
-    sub[c] = '\0';
-}
-
-void encodeString(char *arg, int stop)
-{
-    if (strcmp(arg, ".") == 0 || strcmp(arg, "..") == 0)
-        return;
-    for (int i = 0; i < stop; i++)
-    {
-        arg[i] = atbashChiper(arg[i]);
-    }
-}
-
-void decodeString(char *arg, int stop)
-{
-    if (strcmp(arg, ".") == 0 || strcmp(arg, "..") == 0)
-        return;
-    for (int i = 0; i < stop - 1; i++)
-    {
-        arg[i] = atbashChiper(arg[i]);
-    }
-}
-
-void encode(char *arg)
-{
-    if (strcmp(arg, ".") == 0 || strcmp(arg, "..") == 0)
-        return;
-
-    int stop = strlen(arg);
-    for (int i = stop; i >= 0; i--)
-    {
-        if (arg[i] == '/')
-            break;
-        if (arg[i] == '.')
-        {
-            stop = i;
-            break;
-        }
-    }
-    encodeString(arg, stop);
-}
-
-void decode(char *arg)
-{
-    if (strcmp(arg, ".") == 0 || strcmp(arg, "..") == 0)
-        return;
-
-    char *slash = strstr(arg, "/");
-    if (slash != NULL)
-    {
-        int stop = strlen(slash);
-        for (int i = stop; i >= 0; i--)
-        {
-            if (slash[i] == '/')
-                break;
-            if (slash[i] == '.')
-            {
-                stop = i;
-                break;
-            }
-        }
-        decodeString(slash + 1, stop);
-    }
-}
-
-char atbashChiper(char str)
-{
-
-    if (str >= 'A' && str <= 'Z')
-    {
-        str = 'Z' + 'A' - str;
-        return str;
-    }
-    else if (str >= 'a' && str <= 'z')
-    {
-        str = 'z' + 'a' - str;
-        return str;
-    }
-
-    return str;
-}
-
-char *checkPath(char *str)
-{
-    bool encr;
-    int start, id;
-    encr = 0;
-    start = 1;
-    id = strchr(str + start, '/') - str - 1;
-    char curpos[1024];
-    while (id < strlen(str))
-    {
-        strcpy(curpos, "");
-        strncpy(curpos, str + start, id - start + 1);
-        curpos[id - start + 1] = '\0';
-        if (encr)
-        {
-            // encrypt(curpos, 0);
-            strncpy(str + start, curpos, id - start + 1);
-        }
-        if (!encr && strstr(str + start, "AtoZ_") == str + start)
-            encr = 1;
-        start = id + 2;
-        id = strchr(str + start, '/') - str - 1;
-    }
-    id = strlen(str);
-    id--;
-    strncpy(curpos, str + start, id - start + 1);
-    curpos[id - start + 1] = '\0';
-    if (encr)
-    {
-        // encrypt(curpos, 1);
-        strncpy(str + start, curpos, id - start + 1);
-    }
-    return str;
-}
-
-char *getPath(char *fpath, char *dirpath, const char *path)
-{
-    strcpy(fpath, dirpath);
-    if (!strcmp(path, "/"))
-        return fpath;
-    if (path[0] != '/')
-    {
-        fpath[strlen(fpath) + 1] = '\0';
-        fpath[strlen(fpath)] = '/';
-    }
-
-    sprintf(fpath, "%s%s", fpath, path);
-    return fpath;
-}
-
-{
-    char fpath[1000];
-    getPath(fpath, dirpath, path);
-
-    // if(strcmp(path,"/") == 0)
-    // {
-    //     path = dirpath;
-    //     sprintf(fpath,"%s",path);
-    // } else sprintf(fpath, "%s%s",dirpath, path);
-
-    DIR *dp;
-    struct dirent *de;
-    (void)offset;
-    (void)fi;
-
-    dp = opendir(checkPath(path));
-
-    if (dp == NULL)
-        return -errno;
-
-    while ((de = readdir(dp)) != NULL)
-    {
-        struct stat st;
-
-        memset(&st, 0, sizeof(st));
-
-        st.st_ino = de->d_ino;
-        st.st_mode = de->d_type << 12;
-
-        if (filler(buf, de->d_name, &st, 0))
-            break;
-    }
-    closedir(dp);
-    return 0;
-}
-
-// Nomor 1b rename
-static int xmp_rename(const char *from, const char *to)
-{
-    int res;
-    char fpath[1000], path2[1000];
-    char *a = strstr(to, "/AtoZ");
-
-    if (strstr(tp, "/AtoZ"))
-    {
-        // decrypt(strstr(tp, "/AtoZ"));
-    }
-
-    sprintf(fpath, "%s%s", dirpath, from);
-    sprintf(path2, "%s%s", dirpath, to);
-
-    res = rename(fpath, path2);
-    if (res == -1)
-        return -errno;
-
-    return 0;
-}
-
-// Nomor 1d
-void writeLog(const char arg1[], const char arg2[], int num_encv)
-{
-    FILE *fp = fopen(logpath, "a+");
-
-    char str[1000];
-    if (mode == 1)
-    {
-        sprintf(str, "RENAME %s menjadi %s", arg1, arg2);
-        fprintf(fp, "%s\n", str);
-    }
-    else if (mode == 2)
-    {
-        sprintf(str, "MKDIR %s", arg2);
-        fprintf(fp, "%s\n", str)
-    }
-
+    fprintf(str, "%s -> %s\n", from, to);
     fclose(fp);
 }
 
-char *lastPart(char *str)
+void encodeRot13(char *str)
 {
-    if (!strcmp(str, "/"))
-        return NULL;
-    return strrchr(str, '/') + 1;
+    if (strcmp(str, ".") == 0 || strcmp(str, "..") == 0)
+        return;
+    
+    printf("Encode path Rot13: %s\n", str);
+
+    int lenght = strlen(str);
+    for (int i = 0; i < lenght; i++)
+    {
+        if (str[i] == '/')
+            continue;
+        if (str[i] == '.')
+            break;
+
+        if(str[i] >= 'A' && str[i] <= 'Z')
+        {
+            if(str[i] < 'N')
+            {
+                str[i] += 13;
+            }
+            else if(str[i] >= 'N')
+            {
+                str[i] -= 13;
+            }
+        }
+        else if(str[i] >= 'a' && str[i] <= 'z')
+        {
+            if(str[i] < 'n')
+            {
+                str[i] += 13;
+            }
+            else if(str[i] >= 'n')
+            {
+                str[i] -= 13;
+            }
+        }
+    }
 }
 
+void decodeRot13(char *str)
 {
-    char fpath[1000];
+    if (strcmp(str, ".") == 0 || strcmp(str, "..") == 0 || strstr(str, "/") == NULL)
+        return;
+
+    printf("Decode path Rot13: %s\n", str);
+
+    int length = strlen(str), s = 0;
+    for (int i = length-1; i >= 0; i--)
+    {
+        if (str[i] == '/')
+            break;
+
+        if (str[i] == '.') // titik terakhir
+        {
+            length = i;
+            break;
+        }
+    }
+
+    for (int i = 0; i < length; i++)
+    {
+        if (str[i] == '/')
+        {
+            s = i + 1;
+            break;
+        }
+    }
+
+    for (int i = s; i < length; i++)
+    {
+        if (str[i] == '/')
+        {
+            continue;
+        }
+        
+        if(str[i] >= 'A' && str[i] <= 'Z')
+        {
+            if(str[i] < 'N')
+            {
+                str[i] += 13;
+            }
+            else if(str[i] >= 'N')
+            {
+                str[i] -= 13;
+            }
+        }
+        else if(str[i] >= 'a' && str[i] <= 'z')
+        {
+            if(str[i] < 'n')
+            {
+                str[i] += 13;
+            }
+            else if(str[i] >= 'n')
+            {
+                str[i] -= 13;
+            }
+        }
+    }
+}
+
+void encodeAtbash(char *str)
+{
+    if (strcmp(str, ".") == 0 || strcmp(str, "..") == 0)
+        return;
+
+    printf("Encode path Atbash: %s\n", str);
+
+    int lenght = strlen(str);
+    for (int i = 0; i < lenght; i++)
+    {
+        if (str[i] == '/')
+            continue;
+        if (str[i] == '.')
+            break;
+
+        if (str[i] >= 'A' && str[i] <= 'Z')
+        {
+            str[i] = 'Z' + 'A' - str[i];
+        }
+        else if (st[i] >= 'a' && str[i] <= 'z')
+        {
+            str[i] = 'z' + 'a' - str[i];
+        }
+    }
+}
+
+void decodeAtbash(char *str)
+{
+    if (strcmp(str, ".") == 0 || strcmp(str, "..") == 0 || strstr(str, "/") == NULL)
+        return;
+
+    printf("Decode path Atbash: %s\n", str);
+
+    int length = strlen(str), s = 0;
+    for (int i = length-1; i >= 0; i--)
+    {
+        if (str[i] == '/')
+            break;
+
+        if (str[i] == '.') // titik terakhir
+        {
+            length = i;
+            break;
+        }
+    }
+
+    for (int i = 0; i < length; i++)
+    {
+        if (str[i] == '/')
+        {
+            s = i + 1;
+            break;
+        }
+    }
+
+    for (int i = s; i < length; i++)
+    {
+        if (str[i] == '/')
+        {
+            continue;
+        }
+        
+        if (str[i] >= 'A' && str[i] <= 'Z')
+        {
+            str[i] = 'Z' + 'A' - str[i];
+        }
+        else if (st[i] >= 'a' && str[i] <= 'z')
+        {
+            str[i] = 'z' + 'a' - str[i];
+        }
+    }
+}
+
+static int xmp_getattr(const char *path, struct stat *stbuf)
+{
+    int res;
+    char fpath[1000], str[1000];
+
+    char *check1 = strstr(path, atoz);
+    if (check1)
+        decodeAtbash(check1);
+
+    char *check2 = strstr(path, rx);
+    if (check2)
+        decodeRot13(check2);
+    decodeAtbash(check2);
 
     if (strcmp(path, "/") == 0)
     {
@@ -299,251 +264,541 @@ char *lastPart(char *str)
     else
         sprintf(fpath, "%s%s", dirpath, path);
 
-    char *slash
-
-        int res;
-
-    res = mkdir(fpath, mode);
+    res = lstat(fpath, stbuf);
     if (res == -1)
         return -errno;
 
-    return 0;
-}
+    sprintf(str, "LS::%s", path);
+    writingLog(str, 1);
 
-// int check_ext(char* file)
-// {
-// 	id = 0;
-// 	while(id < strlen(file) && file[id] != '.') id++;
-// 	memset(ext, 0, sizeof(ext));
-// 	strcpy(ext, file + id);
-// 	return id;
-// }
-
-// void split(char *str)
-// {
-// 	char finalPath[10000000];
-// 	sprintf(finalPath, "%s.", str);
-// 	pid_t cid;
-// 	cid = fork();
-// 	if(cid == 0)
-// 	{
-// 		char *argv[] = {"split", "-b", "1024", "-d", "-a", "3", str, finalPath, NULL};
-// 		execv("/usr/bin/split", argv);
-// 	}
-// 	int status;
-// 	while(wait(&status) > 0);
-// 	unlink(str);
-// }
-
-// void combine(char *str)
-// {
-// 	char buff[2048];
-// 	int id = 0;
-// 	char *ext = str + strlen(str) - 4;
-// 	if(strcmp(ext, ".000")) return;
-// 	ext[0] = '\0';
-// 	FILE *combined;
-// 	combined = fopen(str, "wb");
-// 	while(1)
-// 	{
-// 		char name[1000000];
-// 		sprintf(name, "%s.%03d", str, id);
-// 		FILE *each;
-// 		each = fopen(name, "rb");
-// 		if(!each) break;
-// 		fseek(each, 0L, SEEK_END);
-// 		rewind(each);
-// 		fread(buff, sizeof(buff), ftell(each), each);
-// 		fwrite(buff, sizeof(buff), ftell(each), combined);
-// 		fclose(each);
-// 		unlink(name);
-// 		id++;
-// 	}
-// 	fclose(combined);
-// }
-
-int encrFolder(char *str)
-{
-	int ans;
-	char *fi = strtok(str, "/");
-	ans = 0;
-	while(fi)
-	{
-		char sub[1024];
-		substring(fi, sub, 0, 6);
-		if(!strcmp(sub, "encv1_")) ans |= 1;
-		else if(!strcmp(sub, "encv2_")) ans |= 2;
-		fi = strtok(NULL, "/");
-	}
-	return ans;
-}
-
-// int encrFull(char *str)
-// {
-// 	int ans;
-// 	char *fi = strtok(str, "/");
-// 	char *sc = strtok(NULL, "/");
-// 	ans = 0;
-// 	while(sc)
-// 	{
-// 		char sub[1024];
-// 		substring(fi, sub, 0, 6);
-// 		if(!strcmp(sub, "encv1_")) ans |= 1;
-// 		else if(!strcmp(sub, "encv2_")) ans |= 2;
-// 		fi = sc;
-// 		sc = strtok(NULL, "/");
-// 	}
-// 	return ans;
-// }
-
-// void loopAllEnc1(char *str, int flag)
-// {
-// 	struct dirent *dp;
-// 	DIR *dir = opendir(str);
-
-// 	if(!dir) return;
-
-// 	while((dp = readdir(dir)) != NULL)
-// 	{
-// 		if(strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0)
-//         {
-//         	char path[2000000], name[1000000], newname[1000000];
-//         	mixPath(path, str, dp->d_name);
-// 			strcpy(name, dp->d_name);
-// 			if(flag == 1) mixPath(newname, str, encrypt(name, 1));
-// 			else if(flag == -1) mixPath(newname, str, decrypt(name, 1));
-// 			if(dp->d_type == DT_REG) rename(path, newname);
-// 			else if(dp->d_type == DT_DIR)
-// 			{
-// 				rename(path, newname);
-// 				loopAllEnc1(newname, flag);
-// 			}
-//         }
-// 	}
-// }
-
-// void encrypt1(char *str, int flag)
-// {
-// 	struct stat add;
-// 	stat(str, &add);
-// 	if(!S_ISDIR(add.st_mode)) return;
-// 	loopAllEnc1(str, flag);
-// }
-
-static int xmp_getattr(const char *path, struct stat *stbuf)
-{
-    int res;
-    char fpath[1000];
-    getPath(fpath, dirpath, path);
-
-    char *a = strstr(path, "AtoZ_");
-    if (a != NULL)
-        decode(a);
-
-    res = lstat(checkPath(fpath), stbuf);
-    writeInfo("LS", fpath);
-    if (res == -1)
-        return -errno;
-    return 0;
-}
-
-static int xmp_access(const char *path, int mask)
-{
-    char *a = strstr(path, "AtoZ_");
-    if (a != NULL)
-        decode(a);
-
-    int res;
-    char fpath[1000];
-
-    getPath(fpath, dirpath, path);
-
-    res = access(checkPath(fpath), mask);
-    if (res == -1)
-        return -errno;
-    return 0;
-}
-
-static int xmp_readlink(const char *path, char *buf, size_t size)
-{
-    char *a = strstr(path, "AtoZ_");
-    if (a != NULL)
-        decode(a);
-
-    int res;
-    char fpath[1000];
-    getPath(fpath, dirpath, path);
-    res = readlink(checkPath(fpath), buf, size - 1);
-
-    if (res == -1)
-        return -errno;
-    buf[res] = '\0';
     return 0;
 }
 
 static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi)
 {
-    char *a = strstr(to, "AtoZ_");
-    if (a != NULL)
-        decode(a);
+    int res;
+    char fpath[1000], str[100];
 
-    char fpath[1000];
-    getPath(fpath, dirpath, path);
-    int res = 0;
+    char *check1 = strstr(path, atoz);
+    if (check1)
+        decodeAtbash(check1);
+
+    char *check2 = strstr(path, rx);
+    if (check2)
+        decodeRot13(check2);
+    decodeAtbash(check2);
+
+    if (strcmp(path, "/") == 0)
+    {
+        path = dirpath;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", dirpath, path);
 
     DIR *dp;
     struct dirent *de;
+
     (void)offset;
     (void)fi;
 
-    dp = opendir(checkPath(fpath));
+    dp = opendir(fpath);
     if (dp == NULL)
         return -errno;
 
-    // int flag = encrFolder(fpath);
     while ((de = readdir(dp)) != NULL)
     {
+        if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0)
+            continue;
+
         struct stat st;
         memset(&st, 0, sizeof(st));
         st.st_ino = de->d_ino;
         st.st_mode = de->d_type << 12;
-        // char nama[1000000];
-        // strcpy(nama, de->d_name);
-        // if (flag == 1)
-        // {
-        //     if (de->d_type == DT_REG)
-        //         decrypt(nama, 1);
-        //     else if (de->d_type == DT_DIR && strcmp(de->d_name, ".") != 0 && strcmp(de->d_name, "..") != 0)
-        //         decrypt(nama, 0);
-        //     res = (filler(buf, nama, &st, 0));
-        //     if (res != 0)
-        //         break;
-        // }
-        // else
-        // {
-        //     res = (filler(buf, nama, &st, 0));
-        //     if (res != 0)
-        //         break;
-        // }
-        if (a != NULL)
-            encode(de->name);
+
+        if (check1)
+            encodeAtbash(de->d_name); // encode yang ada di dalam directory sekarang
+
+        if (check2)
+            encodeAtbash(de->d_name);
+        encodeRot13(de->d_name);
 
         res = (filler(buf, de->d_name, &st, 0));
-
-        if (res)
+        if (res != 0)
             break;
     }
+
+    sprintf(str, "READDIR::%s", path);
+    writingLog(str, 1);
+
     closedir(dp);
-    writeInfo("CD", fpath);
+    return 0;
+}
+
+static int xmp_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
+{
+    int fd, res;
+    char fpath[1000], str[100];
+
+    char *check1 = strstr(path, atoz);
+    if (check1)
+        decodeAtbash(check1);
+
+    char *check2 = strstr(path, rx);
+    if (check2)
+        decodeRot13(check2);
+    decodeAtbash(check2);
+
+    if (strcmp(path, "/") == 0)
+    {
+        path = dirpath;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", dirpath, path);
+
+    (void)fi;
+    fd = open(fpath, O_RDONLY);
+    if (fd == -1)
+        return -errno;
+
+    res = pread(fd, buf, size, offset);
+    if (res == -1)
+        res = -errno;
+
+    sprintf(str, "READ::%s", path);
+    writingLog(str, 1);
+
+    close(fd);
+    return res;
+}
+
+static int xmp_mkdir(const char *path, mode_t mode)
+{
+    int res;
+    char fpath[1000], str[100];
+
+    char *check1 = strstr(path, atoz);
+    if (check1)
+        decodeAtbash(check1);
+
+    char *check2 = strstr(path, rx);
+    if (check2)
+        decodeRot13(check2);
+    decodeAtbash(check2);
+
+    if (strcmp(path, "/") == 0)
+    {
+        path = dirpath;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", dirpath, path);
+
+    char *folderPath = strstr(fpathTo, atoz);
+    if (folderPath)
+        writingLog2(path, fpath);
+
+    res = mkdir(fpath, mode);
+    if (res == -1)
+        return -errno;
+
+    sprintf(str, "MKDIR::%s", path);
+    writingLog(str, 1);
+
+    return 0;
+}
+
+static int xmp_rmdir(const char *path)
+{
+    int res;
+    char fpath[1000], str[100];
+
+    char *check1 = strstr(path, atoz);
+    if (check1)
+        decodeAtbash(check1);
+
+    char *check2 = strstr(path, rx);
+    if (check2)
+        decodeRot13(check2);
+    decodeAtbash(check2);
+
+    if (strcmp(path, "/") == 0)
+    {
+        path = dirpath;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", dirpath, path);
+
+    res = rmdir(fpath);
+    if (res == -1)
+        return -errno;
+
+    sprintf(str, "RMDIR::%s", path);
+    writingLog(str, 2);
+
+    return 0;
+}
+
+static int xmp_rename(const char *from, const char *to)
+{
+    int res;
+    char fpathFrom[1000], fpathTo[1000], str[100];
+
+    char *check1 = strstr(to, atoz);
+    if (check1)
+        decodeAtbash(check1);
+
+    char *check2 = strstr(from, rx);
+    if (check2)
+        decodeRot13(check2);
+    decodeAtbash(check2);
+
+    char *check3 = strstr(to, rx);
+    if (check3)
+        decodeRot13(check3);
+    decodeAtbash(check3);
+
+    sprintf(fpathFrom, "%s%s", dirpath, from);
+    sprintf(fpathTo, "%s%s", dirpath, to);
+
+    char *folderPath = strstr(fpathTo, atoz);
+    if (folderPath)
+        writingLog2(fpathFrom, fpathTo);
+
+    res = rename(fpathFrom, fpathTo);
+    if (res == -1)
+        return -errno;
+
+    sprintf(str, "RENAME::%s::%s", from, to);
+    writingLog(str, 1);
+
+    if (check3 != NULL)
+    {
+        // enkripsi2(fpathto);
+        sprintf(str, "ENCODE2::%s::%s", from, to);
+        writingLog(str, 1);
+    }
+
+    if (check2 != NULL && check3 == NULL)
+    {
+        // dekripsi2(fpathto);
+        sprintf(str, "DECODE2::%s::%s", from, to);
+        writingLog(str, 1);
+    }
+
+    if (strstr(to, a_is_a) != NULL)
+    {
+        // encodeBinary(fpathto);
+        sprintf(str, "ENCODE3::%s::%s", from, to);
+        writingLog(str, 1);
+    }
+
+    if (strstr(from, a_is_a) != NULL && strstr(to, a_is_a) == NULL)
+    {
+        // decodeBinary(fpathto);
+        sprintf(str, "DECODE3::%s::%s", from, to);
+        writingLog(str, 1);
+    }
+
+    return 0;
+}
+
+static int xmp_truncate(const char *path, off_t size)
+{
+    int fd, res;
+    char fpath[1000], str[100];
+
+    char *check1 = strstr(path, atoz);
+    if (check1)
+        decodeAtbash(check1);
+
+    char *check2 = strstr(path, rx);
+    if (check2)
+        decodeRot13(check2);
+    decodeAtbash(check2);
+
+    if (strcmp(path, "/") == 0)
+    {
+        path = dirpath;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", dirpath, path);
+
+    res = truncate(fpath, size);
+    if (res == -1)
+        return -errno;
+
+    sprintf(str, "TRUNCATE::%s", path);
+    writingLog(str, 1);
+
+    return 0;
+}
+
+static int xmp_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
+{
+    int fd, res;
+    char fpath[1000], str[100];
+
+    char *check1 = strstr(path, atoz);
+    if (check1)
+        decodeAtbash(check1);
+
+    char *check2 = strstr(path, rx);
+    if (check2)
+        decodeRot13(check2);
+    decodeAtbash(check2);
+
+    if (strcmp(path, "/") == 0)
+    {
+        path = dirpath;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", dirpath, path);
+
+    (void)fi;
+    fd = open(fpath, O_WRONLY);
+    if (fd == -1)
+        return = -errno;
+
+    res = pwrite(fd, buf, size, offset);
+    if (res == -1)
+        res = -errno;
+
+    sprintf(str, "WRITE::%s", path);
+    writingLog(str, 1);
+
+    close(fd);
+    return res;
+}
+
+static int xmp_create(const char *path, mode_t mode, struct fuse_file_info *fi)
+{
+    int res;
+    char fpath[1000], str[100];
+
+    char *check1 = strstr(path, atoz);
+    if (check1)
+        decodeAtbash(check1);
+
+    char *check2 = strstr(path, rx);
+    if (check2)
+        decodeRot13(check2);
+    decodeAtbash(check2);
+
+    if (strcmp(path, "/") == 0)
+    {
+        path = dirpath;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", dirpath, path);
+
+    (void)fi;
+    res = creat(fpath, mode);
+    if (res == -1)
+        return -errno;
+
+    sprintf(str, "CREATE::%s", path);
+    writingLog(str, 1);
+
+    close(res);
+    return 0;
+}
+
+static int xmp_utimens(const char *path, const struct timespec ts[2])
+{
+    int res;
+    char fpath[1000], str[100];
+
+    char *check1 = strstr(path, atoz);
+    if (check1)
+        decodeAtbash(check1);
+
+    char *check2 = strstr(path, rx);
+    if (check2)
+        decodeRot13(check2);
+    decodeAtbash(check2);
+
+    if (strcmp(path, "/") == 0)
+    {
+        path = dirpath;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", dirpath, path);
+
+    struct timeval tv[2];
+
+    tv[0].tv_sec = ts[0].tv_sec;
+    tv[0].tv_usec = ts[0].tv_nsec / 1000;
+    tv[1].tv_sec = ts[1].tv_sec;
+    tv[1].tv_usec = ts[1].tv_nsec / 1000;
+
+    res = utimes(fpath, tv);
+    if (res == -1)
+        return -errno;
+
+    sprintf(str, "UTIMENS::%s", path);
+    writingLog(str, 1);
+
+    return 0;
+}
+
+static int xmp_access(const char *path, int mask)
+{
+    int res;
+    char fpath[1000], str[100];
+
+    char *check1 = strstr(path, atoz);
+    if (check1)
+        decodeAtbash(check1);
+
+    char *check2 = strstr(path, rx);
+    if (check2)
+        decodeRot13(check2);
+    decodeAtbash(check2);
+
+    if (strcmp(path, "/") == 0)
+    {
+        path = dirpath;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", dirpath, path);
+
+    res = access(fpath, mask);
+    if (res == -1)
+        return -errno;
+
+    sprintf(str, "ACCESS::%s", path);
+    writingLog(str, 1);
+
+    return 0;
+}
+
+static int xmp_open(const char *path, struct fuse_file_info *fi)
+{
+    int res;
+    char fpath[1000], str[100];
+
+    char *check1 = strstr(path, atoz);
+    if (check1)
+        decodeAtbash(check1);
+
+    char *check2 = strstr(path, rx);
+    if (check2)
+        decodeRot13(check2);
+    decodeAtbash(check2);
+
+    if (strcmp(path, "/") == 0)
+    {
+        path = dirpath;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", dirpath, path);
+
+    res = open(fpath, fi->flags);
+    if (res == -1)
+        return -errno;
+
+    sprintf(str, "OPEN::%s", path);
+    writingLog(str, 1);
+
+    close(res);
+    return 0;
+}
+
+static int xmp_unlink(const char *path)
+{
+    int res;
+    char fpath[1000], str[100];
+
+    char *check1 = strstr(path, atoz);
+    if (check1)
+        decodeAtbash(check1);
+
+    char *check2 = strstr(path, rx);
+    if (check2)
+        decodeRot13(check2);
+    decodeAtbash(check2);
+
+    if (strcmp(path, "/") == 0)
+    {
+        path = dirpath;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", dirpath, path);
+
+    res = unlink(fpath);
+    if (res == -1)
+        return -errno;
+
+    sprintf(str, "UNLINK::%s", path);
+    writingLog(str, 2);
+
+    return 0;
+}
+
+static int xmp_readlink(const char *path, char *buf, size_t size)
+{
+    int res;
+    char fpath[1000], str[100];
+
+    char *check1 = strstr(path, atoz);
+    if (check1)
+        decodeAtbash(check1);
+
+    char *check2 = strstr(path, rx);
+    if (check2)
+        decodeRot13(check2);
+    decodeAtbash(check2);
+
+    if (strcmp(path, "/") == 0)
+    {
+        path = dirpath;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", dirpath, path);
+
+    res = readlink(fpath, buf, size - 1);
+    if (res == -1)
+        return -errno;
+
+    sprintf(str, "READLINK::%s", path);
+    writingLog(str, 1);
+
+    buf[res] = '\0';
     return 0;
 }
 
 static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
 {
-    char fpath[1000];
-    getPath(fpath, dirpath, path);
-    checkPath(fpath);
     int res;
+    char fpath[1000], str[100];
+
+    char *check1 = strstr(path, atoz);
+    if (check1)
+        decodeAtbash(check1);
+
+    char *check2 = strstr(path, rx);
+    if (check2)
+        decodeRot13(check2);
+    decodeAtbash(check2);
+
+    if (strcmp(path, "/") == 0)
+    {
+        path = dirpath;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", dirpath, path);
 
     /* 'mknod(path, mode, rdev)' is more portable */
     if (S_ISREG(mode))
@@ -560,302 +815,199 @@ static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
     if (res == -1)
         return -errno;
 
-    writeInfo("MKNOD", fpath);
-    return 0;
+    sprintf(str, "MKNOD::%s", path);
+    writingLog(str, 1);
 }
 
-static int xmp_mkdir(const char *path, mode_t mode)
-{
-	char fpath[1000];
-	getPath(fpath, dirpath, path);
-    
-    char log[3000];
-        char *tmp = strstr(from, "AtoZ_");
-        sprintf(logbuf,"%s %s %s", f, "->", t);
-        writeLog(log);
-
-	int res;
-	res = mkdir(checkPath(fpath), mode);
-	if (res == -1) return -errno;
-
-    char cek_substr[1024];
-    if(lastPart(fpath) == 0) return 0;
-    char filePath[1000000];
-    strcpy(filePath, lastPart(fpath));
-    substring(filePath, cek_substr, 0, 6);
-	if(strcmp(cek_substr, "AtoZ_") == 0)
-	{
-		encrypt1(fpath, 1);
-	}
-	writeI("MKDIR", fpath);
-	return 0;
-}
-
-static int xmp_unlink(const char *path)
-{
-    char *a = strstr(path, "AtoZ_");
-    if (a != NULL)
-        decode(a);
-
-    char fpath[1000];
-    getPath(fpath, dirpath, path);
-    int res;
-
-    res = unlink(checkPath(fpath));
-    writeWarning("REMOVE", fpath);
-    if (res == -1)
-        return -errno;
-    return 0;
-}
-
-static int xmp_rmdir(const char *path)
-{
-    char *a = strstr(to, "AtoZ_");
-    if (a != NULL)
-        decode(a);
-
-    char fpath[1000];
-    getPath(fpath, dirpath, path);
-    int res;
-
-    res = rmdir(checkPath(fpath));
-    writeWarning("RMDIR", fpath);
-    if (res == -1)
-        return -errno;
-    return 0;
-}
-
-static int xmp_symlink(const char *from, const char *to)
+static int xmp_symlink(const shar *from, const char *to)
 {
     int res;
+    char fpathFrom[1000], fpathTo[1000], str[100];
 
-    res = symlink(from, to);
+    int res;
+    char fpathFrom[1000], fpathTo[1000], str[100];
+
+    char *check1 = strstr(to, atoz);
+    if (check1)
+        decodeAtbash(check1);
+
+    char *check2 = strstr(from, rx);
+    if (check2)
+        decodeRot13(check2);
+    decodeAtbash(check2);
+
+    char *check3 = strstr(to, rx);
+    if (check3)
+        decodeRot13(check3);
+    decodeAtbash(check3);
+
+    sprintf(fpathFrom, "%s%s", dirpath, from);
+    sprintf(fpathTo, "%s%s", dirpath, to);
+
+    res = symlink(fpathFrom, fpathTo);
     if (res == -1)
         return -errno;
 
-    return 0;
-}
+    sprintf(str, "SYMLINK::%s::%s", from, to);
+    writingLog(str, 1);
 
-static int xmp_rename(const char *from, const char *to)
-{
-    char f_from[1000];
-    getPath(f_from, dirpath, from);
-
-    char f_to[1000];
-    getPath(f_to, dirpath, to);
-
-    char *a = strstr(to, "AtoZ_");
-    if (a != NULL)
-    {
-        char log[3000];
-        char *tmp = strstr(from, "AtoZ_");
-        sprintf(logbuf,"%s %s %s", f, "->", t);
-        writeLog(log);
-    }
-
-    int res;
-    res = rename(checkPath(f_from), checkPath(f_to));
-
-    if (res == -1)
-        return -errno;
-
-    // int ff_from = 0, ff_to = 0;
-    // char cek_substr[1024], cek2[1024];
-
-    // if (lastPart(f_from) == 0)
-    //     return 0;
-    // char filePath[1000000];
-
-    // strcpy(filePath, lastPart(f_from));
-    // substring(filePath, cek_substr, 0, 6);
-    // if (strcmp(cek_substr, "AtoZ_") == 0) // encode 1
-    // {
-    //     ff_from = 1;
-    // }
-
-    // if(lastPart(fto) == 0) return 0;
-    // strcpy(filePath, lastPart(f_to));
-    // substring(filePath, cek_substr, 0 ,6);
-
-    writeInfo("RENAME", fpath);
     return 0;
 }
 
 static int xmp_link(const char *from, const char *to)
 {
-    // char fpath[1000];
-    // getPath(fpath, dirpath, path)
     int res;
+    char fpathFrom[1000], fpathTo[1000], str[100];
 
-    res = link(from, to);
+    char *check1 = strstr(to, atoz);
+    if (check1)
+        decodeAtbash(check1);
+
+    char *check2 = strstr(from, rx);
+    if (check2)
+        decodeRot13(check2);
+    decodeAtbash(check2);
+
+    char *check3 = strstr(to, rx);
+    if (check3)
+        decodeRot13(check3);
+    decodeAtbash(check3);
+
+    sprintf(fpathFrom, "%s%s", dirpath, from);
+    sprintf(fpathTo, "%s%s", dirpath, to);
+
+    res = link(fpathFrom, fpathTo);
     if (res == -1)
         return -errno;
 
-    // writeInfo("LINK", fpath);
+    sprintf(str, "LINK::%s::%s", from, to);
+    writingLog(str, 1);
+
     return 0;
 }
 
 static int xmp_chmod(const char *path, mode_t mode)
 {
-    char fpath[1000];
-    getPath(fpath, dirpath, path);
     int res;
+    char fpath[1000], str[100];
 
-    res = chmod(checkPath(fpath), mode);
-    writeInfo("CHMOD", fpath);
+    char *check1 = strstr(path, atoz);
+    if (check1)
+        decodeAtbash(check1);
+
+    char *check2 = strstr(path, rx);
+    if (check2)
+        decodeRot13(check2);
+    decodeAtbash(check2);
+
+    if (strcmp(path, "/") == 0)
+    {
+        path = dirpath;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", dirpath, path);
+
+    res = chmod(fpath, mode);
     if (res == -1)
         return -errno;
+
+    sprintf(str, "CHMOD::%s", path);
+    writingLog(str, 1);
+
+    return 0;
+
     return 0;
 }
 
 static int xmp_chown(const char *path, uid_t uid, gid_t gid)
 {
-    char fpath[1000];
-    getPath(fpath, dirpath, path);
     int res;
+    char fpath[1000], str[100];
 
-    res = lchown(checkPath(fpath), uid, gid);
-    writeInfo("CHOWN", fpath);
+    char *check1 = strstr(path, atoz);
+    if (check1)
+        decodeAtbash(check1);
+
+    char *check2 = strstr(path, rx);
+    if (check2)
+        decodeRot13(check2);
+    decodeAtbash(check2);
+
+    if (strcmp(path, "/") == 0)
+    {
+        path = dirpath;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", dirpath, path);
+
+    res = lchown(fpath, uid, gid);
     if (res == -1)
         return -errno;
+
+    sprintf(str, "CHOWN::%s", path);
+    writingLog(str, 1);
+
     return 0;
-}
-
-static int xmp_truncate(const char *path, off_t size)
-{
-    char fpath[1000];
-    getPath(fpath, dirpath, path);
-    int res;
-
-    res = truncate(checkPath(fpath), size);
-    writeInfo("TRUNCATE", fpath);
-    if (res == -1)
-        return -errno;
-    return 0;
-}
-
-static int xmp_utimens(const char *path, const struct timespec ts[2])
-{
-    char fpath[1000];
-    getPath(fpath, dirpath, path);
-
-    int res;
-    struct timeval tv[2];
-
-    tv[0].tv_sec = ts[0].tv_sec;
-    tv[0].tv_usec = ts[0].tv_nsec / 1000;
-    tv[1].tv_sec = ts[1].tv_sec;
-    tv[1].tv_usec = ts[1].tv_nsec / 1000;
-
-    res = utimes(checkPath(fpath), tv);
-    writeInfo("UTIMENS", fpath);
-
-    if (res == -1)
-        return -errno;
-    return 0;
-}
-
-static int xmp_open(const char *path, struct fuse_file_info *fi)
-{
-    char *a = strstr(path, "AtoZ_");
-    if (a != NULL)
-        decode(a);
-
-    char fpath[1000];
-    getPath(fpath, dirpath, path);
-    int res;
-
-    res = open(checkPath(fpath), fi->flags);
-    writeInfo("OPEN", fpath);
-
-    if (res == -1)
-        return -errno;
-    close(res);
-    return 0;
-}
-
-static int xmp_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
-{
-    char fpath[1000];
-    getPath(fpath, dirpath, path);
-
-    char *a = strstr(to, "AtoZ_");
-    if (a != NULL)
-        decode(a);
-
-    int fd = 0;
-    int res = 0;
-
-    (void)fi;
-    fd = open(checkPath(fpath), O_RDONLY);
-    if (fd == -1)
-        return -errno;
-
-    res = pread(fd, buf, size, offset);
-    if (res == -1)
-        res = -errno;
-    close(fd);
-
-    writeInfo("CAT", fpath);
-    return res;
-}
-
-static int xmp_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
-{
-    int fd, res;
-    char fpath[1000];
-    getPath(fpath, dirpath, path);
-
-    char *a = strstr(path, "AtoZ_");
-    if (a != NULL)
-        decode(a);
-
-    (void)fi;
-    fd = open(checkPath(fpath), O_WRONLY);
-    if (fd == -1)
-        return -errno;
-
-    res = pwrite(fd, buf, size, offset);
-    if (res == -1)
-        res = -errno;
-
-    writeInfo("WRITE", fpath);
-    close(fd);
-    return res;
 }
 
 static int xmp_statfs(const char *path, struct statvfs *stbuf)
 {
-    char fpath[1000];
-    getPath(fpath, dirpath, path);
     int res;
+    char fpath[1000], str[100];
 
-    res = statvfs(checkPath(fpath), stbuf);
+    char *check1 = strstr(path, atoz);
+    if (check1)
+        decodeAtbash(check1);
+
+    char *check2 = strstr(path, rx);
+    if (check2)
+        decodeRot13(check2);
+    decodeAtbash(check2);
+
+    if (strcmp(path, "/") == 0)
+    {
+        path = dirpath;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", dirpath, path);
+
+    res = statvfs(fpath, stbuf);
     if (res == -1)
         return -errno;
+
+    sprintf(str, "STATFS::%s", path);
+    writingLog(str, 1);
+
     return 0;
 }
 
-static int xmp_create(const char *path, mode_t mode, struct fuse_file_info *fi)
+static int xmp_release(const char *path, struct fuse_info *fi)
 {
-    char fpath[1000];
-    getPath(fpath, dirpath, path);
+    char fpath[1000], str[100];
+    sprintf(fpath, "%s%s", dirpath, path);
+    (void)fpath;
     (void)fi;
 
-    int res;
-    res = creat(checkPath(fpath), mode);
+    sprintf(str, "RELEASE::%s", path);
+    writingLog(str, 1);
 
-    if (res == -1)
-        return -errno;
-    writeInfo("CREATE", fpath);
-    close(res);
     return 0;
 }
 
-static int xmp_release(const char *path, struct fuse_file_info *fi)
+static int xmp_fsync(const char *path, int isdatasync, struct fuse_file info *fi)
 {
-    (void)path;
+    char fpath[1000];
+    sprintf(fpath, "%s%s", dirpath, path);
+    (void)fpath;
+    (void)isdatasync;
     (void)fi;
+
+    sprintf(str, "FSYNC::%s", path);
+    writingLog(str, 1);
+
     return 0;
 }
 
@@ -864,15 +1016,20 @@ static struct fuse_operations xmp_oper = {
     .readdir = xmp_readdir,
     .read = xmp_read,
     .mkdir = xmp_mkdir,
+    .unlink = xmp_unlink,
+    .rmdir = xmp_rmdir,
     .rename = xmp_rename,
+    .open = xmp_open,
+    .mknod = xmp_mknod,
+    .write = xmp_write,
+    .access = xmp_access,
+    .readlink = xmp_readlink,
+    .symlink = xmp_symlink,
     .link = xmp_link,
     .chmod = xmp_chmod,
     .chown = xmp_chown,
     .truncate = xmp_truncate,
     .utimens = xmp_utimens,
-    .open = xmp_open,
-    .read = xmp_read,
-    .write = xmp_write,
     .statfs = xmp_statfs,
     .create = xmp_create,
     .release = xmp_release,
