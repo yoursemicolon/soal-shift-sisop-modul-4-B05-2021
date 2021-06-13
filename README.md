@@ -136,6 +136,11 @@ Suatu_File.txt.0002
 ```
 Ketika diakses melalui filesystem hanya akan muncul Suatu_File.t
 
+### Jawaban Soal 2
+Pada utility function ```rename``` dilakukan pengecekan apakah direktori di-rename dengan menambahkan atau menghilangkan ```RX_```. Pengecekan dilakukan menggunakan fungsi ```strstr()```.
+```C
+
+
 ### Screenshot Hasil Pengerjaan Soal 2
 
 <a name="soal3"></a>
@@ -149,7 +154,7 @@ Membuat log system dengan ketentuan sebagai berikut.
 2. (b) Karena Sin dan Sei suka kerapian maka log yang dibuat akan dibagi menjadi dua level, yaitu INFO dan WARNING.
 3. (c) Untuk log level WARNING, digunakan untuk mencatat syscall rmdir dan unlink.
 4. (d) Sisanya, akan dicatat pada level INFO.
-- Format untuk logging yaitu:
+5. (e) Format untuk logging yaitu:
 ```
 [Level]::[dd][mm][yyyy]-[HH]:[MM]:[SS]:[CMD]::[DESC :: DESC]
 
@@ -190,33 +195,7 @@ Utility function xmp_mkdir():
 ```C
 static int xmp_mkdir(const char *path, mode_t mode)
 {
-    int res;
-    char fpath[1000], str[100];
-
-    char *check1 = strstr(path, atoz);
-    if (check1)
-        decodeAtbash(check1);
-
-    char *check2 = strstr(path, rx);
-    if (check2)
-        decodeRot13(check2);
-    decodeAtbash(check2);
-
-    if (strcmp(path, "/") == 0)
-    {
-        path = dirpath;
-        sprintf(fpath, "%s", path);
-    }
-    else
-        sprintf(fpath, "%s%s", dirpath, path);
-
-    char *folderPath = strstr(fpathTo, atoz);
-    if (folderPath)
-        writingLog2(path, fpath);
-
-    res = mkdir(fpath, mode);
-    if (res == -1)
-        return -errno;
+    ...
 
     sprintf(str, "MKDIR::%s", path);
     writingLog(str, 1);
@@ -228,29 +207,7 @@ Utility function xmp_rmdir():
 ```C
 static int xmp_rmdir(const char *path)
 {
-    int res;
-    char fpath[1000], str[100];
-
-    char *check1 = strstr(path, atoz);
-    if (check1)
-        decodeAtbash(check1);
-
-    char *check2 = strstr(path, rx);
-    if (check2)
-        decodeRot13(check2);
-    decodeAtbash(check2);
-
-    if (strcmp(path, "/") == 0)
-    {
-        path = dirpath;
-        sprintf(fpath, "%s", path);
-    }
-    else
-        sprintf(fpath, "%s%s", dirpath, path);
-
-    res = rmdir(fpath);
-    if (res == -1)
-        return -errno;
+    ...
 
     sprintf(str, "RMDIR::%s", path);
     writingLog(str, 2);
@@ -259,4 +216,4 @@ static int xmp_rmdir(const char *path)
 }
 ```
 
-### Screenshor Hasil Pengerjaan Soal 4
+### Screenshot Hasil Pengerjaan Soal 4
