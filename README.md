@@ -15,12 +15,11 @@ Kelompok B05
 <a name="soal1"></a>
 ## Soal 1
 Kita diminta untuk membuat filesystem dengan ketentuan sebagai berikut.
-(a) Jika sebuah direktori dibuat dengan awalan “AtoZ_”, maka direktori tersebut akan menjadi direktori ter-encode.
-
-(b) Jika sebuah direktori di-rename dengan awalan “AtoZ_”, maka direktori tersebut akan menjadi direktori ter-encode.
-(c) Apabila direktori yang terenkripsi di-rename menjadi tidak ter-encode, maka isi direktori tersebut akan terdecode.
-(d) Setiap pembuatan direktori ter-encode (mkdir atau rename) akan tercatat ke sebuah log. Format: ``` /home/[USER]/Downloads/[Nama Direktori] → /home/[USER]/Downloads/AtoZ_[Nama Direktori]```
-(e) Metode encode pada suatu direktori juga berlaku terhadap direktori yang ada di dalamnya (rekursif).
+- Jika sebuah direktori dibuat dengan awalan “AtoZ_”, maka direktori tersebut akan menjadi direktori ter-encode.
+- Jika sebuah direktori di-rename dengan awalan “AtoZ_”, maka direktori tersebut akan menjadi direktori ter-encode.
+- Apabila direktori yang terenkripsi di-rename menjadi tidak ter-encode, maka isi direktori tersebut akan terdecode.
+- Setiap pembuatan direktori ter-encode (mkdir atau rename) akan tercatat ke sebuah log. Format: ``` /home/[USER]/Downloads/[Nama Direktori] → /home/[USER]/Downloads/AtoZ_[Nama Direktori]```
+- Metode encode pada suatu direktori juga berlaku terhadap direktori yang ada di dalamnya (rekursif).
 
 <a name="soal2"></a>
 ## Soal 2
