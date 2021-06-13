@@ -123,11 +123,12 @@ Fungsi akan dipanggil ketika membuat ```mkdir``` atau me-renname folder yang ber
 
 <a name="soal2"></a>
 ## Soal 2
-- Jika sebuah direktori dibuat dengan awalan “RX_[Nama]”, maka direktori tersebut akan menjadi direktori terencode beserta isinya dengan perubahan nama isi sesuai kasus nomor 1 dengan algoritma tambahan ROT13 (Atbash + ROT13).
-- Jika sebuah direktori di-rename dengan awalan “RX_[Nama]”, maka direktori tersebut akan menjadi direktori terencode beserta isinya dengan perubahan nama isi sesuai dengan kasus nomor 1 dengan algoritma tambahan Vigenere Cipher dengan key “SISOP” (Case-sensitive, Atbash + Vigenere).
-- Apabila direktori yang terencode di-rename (Dihilangkan “RX_” nya), maka folder menjadi tidak terencode dan isi direktori tersebut akan terdecode berdasar nama aslinya.
-- Setiap pembuatan direktori terencode (mkdir atau rename) akan tercatat ke sebuah log file beserta methodnya (apakah itu mkdir atau rename).
-- Pada metode enkripsi ini, file-file pada direktori asli akan menjadi terpecah menjadi file-file kecil sebesar 1024 bytes, sementara jika diakses melalui filesystem rancangan Sin dan Sei akan menjadi normal. Sebagai contoh, Suatu_File.txt berukuran 3 kiloBytes pada directory asli akan menjadi 3 file kecil yakni:
+Pada soal ini kita diminta untuk membuat metode enkripsi tambahan untuk filesystem dengan ketentuan sebagai berikut.
+1. (a) Jika sebuah direktori dibuat dengan awalan “RX_[Nama]”, maka direktori tersebut akan menjadi direktori terencode beserta isinya dengan perubahan nama isi sesuai kasus nomor 1 dengan algoritma tambahan ROT13 (Atbash + ROT13).
+2. (b) Jika sebuah direktori di-rename dengan awalan “RX_[Nama]”, maka direktori tersebut akan menjadi direktori terencode beserta isinya dengan perubahan nama isi sesuai dengan kasus nomor 1 dengan algoritma tambahan Vigenere Cipher dengan key “SISOP” (Case-sensitive, Atbash + Vigenere).
+3. (c) Apabila direktori yang terencode di-rename (Dihilangkan “RX_” nya), maka folder menjadi tidak terencode dan isi direktori tersebut akan terdecode berdasar nama aslinya.
+4. (d) Setiap pembuatan direktori terencode (mkdir atau rename) akan tercatat ke sebuah log file beserta methodnya (apakah itu mkdir atau rename).
+5. (e) Pada metode enkripsi ini, file-file pada direktori asli akan menjadi terpecah menjadi file-file kecil sebesar 1024 bytes, sementara jika diakses melalui filesystem rancangan Sin dan Sei akan menjadi normal. Sebagai contoh, Suatu_File.txt berukuran 3 kiloBytes pada directory asli akan menjadi 3 file kecil yakni:
 ```
 Suatu_File.txt.0000
 Suatu_File.txt.0001
@@ -135,27 +136,19 @@ Suatu_File.txt.0002
 ```
 Ketika diakses melalui filesystem hanya akan muncul Suatu_File.t
 
-```
-```
+### Screenshot Hasil Pengerjaan Soal 2
 
 <a name="soal3"></a>
 ## Soal 3
-- Jika sebuah direktori dibuat dengan awalan “A_is_a_”, maka direktori tersebut akan menjadi sebuah direktori spesial.
-- Jika sebuah direktori di-rename dengan memberi awalan “A_is_a_”, maka direktori tersebut akan menjadi sebuah direktori spesial.
-- Apabila direktori yang terenkripsi di-rename dengan menghapus “A_is_a_” pada bagian awal nama folder maka direktori tersebut menjadi direktori normal.
-- Direktori spesial adalah direktori yang mengembalikan enkripsi/encoding pada direktori “AtoZ_” maupun “RX_” namun masing-masing aturan mereka tetap berjalan pada direktori di dalamnya (sifat recursive  “AtoZ_” dan “RX_” tetap berjalan pada subdirektori).
-- Pada direktori spesial semua nama file (tidak termasuk ekstensi) pada fuse akan berubah menjadi lowercase insensitive dan diberi ekstensi baru berupa nilai desimal dari binner perbedaan namanya.
-Contohnya jika pada direktori asli nama filenya adalah “FiLe_CoNtoH.txt” maka pada fuse akan menjadi “file_contoh.txt.1321”. 1321 berasal dari biner 10100101001.
 
-```
-```
 
 <a name="soal4"></a>
 ## Soal 4
-- Log system yang akan terbentuk bernama “SinSeiFS.log” pada direktori home pengguna (/home/[user]/SinSeiFS.log). Log system ini akan menyimpan daftar perintah system call yang telah dijalankan pada filesystem.
-- Karena Sin dan Sei suka kerapian maka log yang dibuat akan dibagi menjadi dua level, yaitu INFO dan WARNING.
-- Untuk log level WARNING, digunakan untuk mencatat syscall rmdir dan unlink.
-- Sisanya, akan dicatat pada level INFO.
+Membuat log system dengan ketentuan sebagai berikut.
+1. (a) Log system yang akan terbentuk bernama “SinSeiFS.log” pada direktori home pengguna (/home/[user]/SinSeiFS.log). Log system ini akan menyimpan daftar perintah system call yang telah dijalankan pada filesystem.
+2. (b) Karena Sin dan Sei suka kerapian maka log yang dibuat akan dibagi menjadi dua level, yaitu INFO dan WARNING.
+3. (c) Untuk log level WARNING, digunakan untuk mencatat syscall rmdir dan unlink.
+4. (d) Sisanya, akan dicatat pada level INFO.
 - Format untuk logging yaitu:
 ```
 [Level]::[dd][mm][yyyy]-[HH]:[MM]:[SS]:[CMD]::[DESC :: DESC]
@@ -166,5 +159,104 @@ INFO::28052021-10:00:00:CREATE::/test.txt
 INFO::28052021-10:01:00:RENAME::/test.txt::/rename.txt
 ```
 
+### Jawaban Soal 3
+Fungsi untuk pembuatan dan pencatatan log system adalah sebagai berikut.
+```C
+// create log system
+void writingLog(char *str, int logType)
+{
+    time_t rawtime;
+    time(&rawtime);
+    struct tm *info = = localtime(&rawtime);
+
+    char curtime[30];
+    strftime(curtime, 30, "%d%m%Y-%H:%M:%S", info);
+
+    FILE *logFile = fopen(logpath, "a");
+
+    if (logType == 1)
+    {
+        fprintf(logFile, "INFO::%s:%s\n", curtime, str);
+    }
+    else if (logType == 2)
+    {
+        fprintf(logFile, "WARNING::%s:%s\n", curtime, str);
+    }
+    fclose(logFile);
+}
 ```
+Jika syscall adalah ```rmdir``` atau ```unlink```, maka log levelnya akan dicatat sebagai ```WARNING```. Selebihnya akan dicatat sebagai ```INFO```. Selain itu, pencatatan juga dilengkapi dengan timestamp, system call yang terpanggil serta informasi dan parameter tambahan. Berikut contoh pemanggilan pada fungsi ```mkdir``` dan ```rmdir```. <BR>
+Utility function xmp_mkdir():
+```C
+static int xmp_mkdir(const char *path, mode_t mode)
+{
+    int res;
+    char fpath[1000], str[100];
+
+    char *check1 = strstr(path, atoz);
+    if (check1)
+        decodeAtbash(check1);
+
+    char *check2 = strstr(path, rx);
+    if (check2)
+        decodeRot13(check2);
+    decodeAtbash(check2);
+
+    if (strcmp(path, "/") == 0)
+    {
+        path = dirpath;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", dirpath, path);
+
+    char *folderPath = strstr(fpathTo, atoz);
+    if (folderPath)
+        writingLog2(path, fpath);
+
+    res = mkdir(fpath, mode);
+    if (res == -1)
+        return -errno;
+
+    sprintf(str, "MKDIR::%s", path);
+    writingLog(str, 1);
+
+    return 0;
+}
 ```
+Utility function xmp_rmdir():
+```C
+static int xmp_rmdir(const char *path)
+{
+    int res;
+    char fpath[1000], str[100];
+
+    char *check1 = strstr(path, atoz);
+    if (check1)
+        decodeAtbash(check1);
+
+    char *check2 = strstr(path, rx);
+    if (check2)
+        decodeRot13(check2);
+    decodeAtbash(check2);
+
+    if (strcmp(path, "/") == 0)
+    {
+        path = dirpath;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", dirpath, path);
+
+    res = rmdir(fpath);
+    if (res == -1)
+        return -errno;
+
+    sprintf(str, "RMDIR::%s", path);
+    writingLog(str, 2);
+
+    return 0;
+}
+```
+
+### Screenshor Hasil Pengerjaan Soal 4
